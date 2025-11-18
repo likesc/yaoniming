@@ -477,7 +477,9 @@ local function init(frame)
 		Settings.CreateCheckbox(category, setting, tooltip)
 		Settings.SetOnValueChangedCallback(setting.variable, opt_changed)
 	end
-	do -- arena nameplate number
+
+	-- arena nameplate number
+	if GetMaxPlayerLevel() == UnitLevel("player") then
 		local key = "arenaid"
 		local label = "竞技场数字名"
 		local tooltip = "竞技场中使用数字作为姓名版名字"
