@@ -7,7 +7,6 @@ local GetContainerNumSlots = C_Container.GetContainerNumSlots or GetContainerNum
 local GetItemInfo = C_Item.GetItemInfo or GetItemInfo
 
 -- item price/level
-
 local tip_price = {}
 -- BUGBUG : 会错误地重复一次 当商人对话框的"图纸"物品 显示了 "材料需求" 时
 function tip_price.routine(tooltip)
@@ -23,9 +22,8 @@ function tip_price.routine(tooltip)
 
 	local show_price = price and options.price          and price > 0 and not tooltip.shownMoneyFrames
 	local show_level = level and options.level ~= false and level > 1 and equip
-
 	if show_price then
-		local container = GetMouseFocus()
+		local container = GetMouseFoci()[1]
 		if not container then
 			return
 		end
@@ -56,7 +54,6 @@ function tip_price.init(self)
 end
 
 -- spell id
-
 local tip_spell = {}
 function tip_spell.routine(tooltip, unit, index, filter)
 	if tooltip:IsForbidden() then
@@ -97,7 +94,6 @@ function tip_spell.init(self)
 end
 
 -- arena nameplate number
-
 local arena_nameplate_num = {}
 function arena_nameplate_num.routine(frame)
 	if not (options.arenaid and IsActiveBattlefieldArena()) then
@@ -125,7 +121,6 @@ function arena_nameplate_num.init(self)
 end
 
 -- selljunk
-
 local selljunk = {}
 function selljunk.flush(sell)
 	if sell.price > 0 then
@@ -222,7 +217,6 @@ function selljunk.destory()
 end
 
 -- cheapest (Stolen from https://github.com/ketho-wow/FlashCheapestGrey)
-
 local cheapest = {}
 function cheapest.light(bag, slot)
 	local item
@@ -268,7 +262,6 @@ function cheapest.mark(key, state)
 end
 
 -- fastloot (Stolen from https://github.com/Xarano-GIT/Faster-Loot)
-
 local fastloot = {
 	epoch = 0.,
 	DELAY = 0.3,
@@ -284,6 +277,90 @@ function fastloot.run(self, checked)
 	end
 end
 
+-- AlternateManaBar
+local function create_manabar()
+	local ui = CreateFrame("StatusBar")
+	ui:SetStatusBarTexture("Interface/TargetingFrame/UI-StatusBar")
+	ui:SetStatusBarColor(0, 0, 1)
+	ui:SetMinMaxValues(0, 1.0)
+	-- backdrop
+	local bg = ui:CreateTexture(nil, "BACKGROUND")
+	bg:SetAllPoints()
+	bg:SetColorTexture(0, 0, 0, .5)
+	-- border
+	local border = ui:CreateTexture(nil, "OVERLAY")
+	border:SetTexture("Interface/TargetingFrame/UI-TargetingFrame")
+	border:SetTexCoord(0.587890625, 0.1044921875, 0.41015625, 0.51171875)
+	border:SetPoint("TOPLEFT", -1, 0)
+	border:SetPoint("BOTTOMRIGHT", 4.16, 0)
+	-- text
+	local text = ui:CreateFontString(nil, "OVERLAY", "TextStatusBarText")
+	text:SetPoint("TOPLEFT")
+	text:SetPoint("BOTTOMRIGHT", -1, 0)
+	text:SetJustifyH("RIGHT")
+	local style = GetCVar("statusTextDisplay")
+	if style ~= "BOTH" then
+		if style == "NONE" then
+			text:Hide()
+		else
+			text:SetJustifyH("CENTER")
+		end
+	end
+	ui.text = text
+	return ui
+end
+
+-- simple druid manabar
+local druidbar = {}
+function druidbar.init(self)
+	if not options.druidbar or self.done then
+		return
+	end
+	if not self.ui then
+		local ui = create_manabar()
+		ui:SetParent(PlayerFrame)
+		ui:SetSize(PlayerFrameManaBar:GetSize())
+		ui:SetPoint("TOPLEFT", PlayerFrameManaBar, "BOTTOMLEFT")
+		self.ui = ui
+	end
+	local ui = self.ui
+	local unit = "player"
+	ui:UnregisterAllEvents()
+	ui:RegisterUnitEvent("UNIT_POWER_UPDATE", unit)
+	ui:RegisterUnitEvent("UNIT_DISPLAYPOWER", unit)
+	ui:SetScript("OnEvent", druidbar.routine)
+	self.done = true
+	self.routine(ui, "UNIT_DISPLAYPOWER", unit)
+	self.routine(ui, "UNIT_POWER_UPDATE", unit, "MANA")
+end
+function druidbar.routine(ui, event, unit, kind)
+	if event == "UNIT_POWER_UPDATE" then
+		if kind ~= "MANA" then
+			return
+		end
+		local mana = UnitPower(unit, 0) -- 0 is Enum.PowerType.Mana
+		ui:SetValue(mana / UnitPowerMax(unit, 0))
+		ui.text:SetText(mana)
+	elseif event == "UNIT_DISPLAYPOWER" then
+		local t = UnitPowerType(unit)
+		if t ~= 0 then
+			ui:Show()
+		else
+			ui:Hide()
+		end
+	end
+end
+function druidbar.unplug(self)
+	if not self.done then
+		return
+	end
+	local ui = self.ui
+	ui:Hide()
+	ui:UnregisterAllEvents()
+	ui:SetScript("OnEvent", nil)
+	self.done = nil
+end
+
 -- global
 local frame = CreateFrame("Frame")
 
@@ -296,7 +373,6 @@ end
 
 local function opt_changed(_, setting, value)
 	local key = UNPF(setting:GetVariable())
-	options[key] = value
 	if key == "selljunk" then
 		selljunk.destory()
 		if value then
@@ -318,6 +394,9 @@ local function opt_changed(_, setting, value)
 		tip_price:init()
 	elseif key == "arenaid" then
 		arena_nameplate_num:init()
+	elseif key == "druidbar" then
+		druidbar:unplug()
+		druidbar:init()
 	end
 end
 
@@ -332,11 +411,8 @@ local function init(frame)
 		local key = "level"
 		local label = "显示物品等级"
 		local tooltip = "在鼠标提示中显示物品等级"
-		local setting = Settings.RegisterAddOnSetting(category, label, PF(key), booltype, false)
-		if options[key] then
-			setting:SetValueInternal(true)
-		end
-		Settings.CreateCheckBox(category, setting, tooltip)
+		local setting = Settings.RegisterAddOnSetting(category, PF(key), key, options, booltype, label, false)
+		Settings.CreateCheckbox(category, setting, tooltip)
 		Settings.SetOnValueChangedCallback(setting.variable, opt_changed)
 	end
 	do -- item price
@@ -344,11 +420,8 @@ local function init(frame)
 		local key = "price"
 		local label = "显示物品价格"
 		local tooltip = "在鼠标提示中显示物品价格"
-		local setting = Settings.RegisterAddOnSetting(category, label, PF(key), booltype, false)
-		if options[key] then
-			setting:SetValueInternal(true)
-		end
-		Settings.CreateCheckBox(category, setting, tooltip)
+		local setting = Settings.RegisterAddOnSetting(category, PF(key), key, options, booltype, label, false)
+		Settings.CreateCheckbox(category, setting, tooltip)
 		Settings.SetOnValueChangedCallback(setting.variable, opt_changed)
 	end
 	tip_price:init()
@@ -364,62 +437,70 @@ local function init(frame)
 			container:Add(3, "所有")
 			return container:GetData()
 		end
-		local setting = Settings.RegisterAddOnSetting(category, label, PF(key), "number", 1)
+		local setting = Settings.RegisterAddOnSetting(category, PF(key), key, options, "number", label, 1)
 		if options[key] and options[key] > 1 then
-			setting:SetValueInternal(options[key])
 			tip_spell:init()
 		end
-		Settings.CreateDropDown(category, setting, get_options, tooltip)
+		Settings.CreateDropdown(category, setting, get_options, tooltip)
 		Settings.SetOnValueChangedCallback(setting.variable, opt_changed)
 	end
 	do -- cheapest
 		local key = "cheapest"
 		local label = "高亮背包垃圾"
 		local tooltip = "按下 Ctrl 时高亮背包内最便宜的垃圾物品"
-		local setting = Settings.RegisterAddOnSetting(category, label, PF(key), booltype, false)
+		local setting = Settings.RegisterAddOnSetting(category, PF(key), key, options, booltype, label, false)
 		if options[key] then
-			setting:SetValueInternal(true)
 			frame:RegisterEvent("MODIFIER_STATE_CHANGED")
 		end
-		Settings.CreateCheckBox(category, setting, tooltip)
+		Settings.CreateCheckbox(category, setting, tooltip)
 		Settings.SetOnValueChangedCallback(setting.variable, opt_changed)
 	end
 	do -- selljunk
 		local key = "selljunk"
 		local label = "垃圾出售按钮"
 		local tooltip = "在商人对话框的右上角添加一个垃圾出售的图标按钮"
-		local setting = Settings.RegisterAddOnSetting(category, label, PF(key), booltype, false)
+		local setting = Settings.RegisterAddOnSetting(category, PF(key), key, options, booltype, label, false)
 		if options[key] then
-			setting:SetValueInternal(true)
 			selljunk.init()
 		end
-		Settings.CreateCheckBox(category, setting, tooltip)
+		Settings.CreateCheckbox(category, setting, tooltip)
 		Settings.SetOnValueChangedCallback(setting.variable, opt_changed)
 	end
 	do -- fastloot
 		local key = "fastloot"
 		local label = "自动拾取加速"
 		local tooltip = "不打开拾取框直接拾取"
-		local setting = Settings.RegisterAddOnSetting(category, label, PF(key), booltype, false)
+		local setting = Settings.RegisterAddOnSetting(category, PF(key), key, options, booltype, label, false)
 		if options[key] then
-			setting:SetValueInternal(true)
 			frame:RegisterEvent("LOOT_READY")
 		end
-		Settings.CreateCheckBox(category, setting, tooltip)
+		Settings.CreateCheckbox(category, setting, tooltip)
 		Settings.SetOnValueChangedCallback(setting.variable, opt_changed)
 	end
 	do -- arena nameplate number
 		local key = "arenaid"
 		local label = "竞技场数字名"
 		local tooltip = "竞技场中使用数字作为姓名版名字"
-		local setting = Settings.RegisterAddOnSetting(category, label, PF(key), booltype, false)
+		local setting = Settings.RegisterAddOnSetting(category, PF(key), key, options, booltype, label, false)
 		if options[key] then
-			setting:SetValueInternal(true)
 			arena_nameplate_num:init()
 		end
-		Settings.CreateCheckBox(category, setting, tooltip)
+		Settings.CreateCheckbox(category, setting, tooltip)
 		Settings.SetOnValueChangedCallback(setting.variable, opt_changed)
 	end
+
+	if select(2, UnitClass("player")) == "DRUID" and not IsAddOnLoaded("SimpleDruidMana") then -- druidbar
+		local key = "druidbar"
+		local label = "德鲁伊魔法条"
+		local tooltip = "在头像框架上添加一个状态条用于查看野性德鲁伊的魔法数值"
+		local setting = Settings.RegisterAddOnSetting(category, PF(key), key, options, booltype, label, false)
+		if options[key] then
+			druidbar:init()
+		end
+		Settings.CreateCheckbox(category, setting, tooltip)
+		Settings.SetOnValueChangedCallback(setting.variable, opt_changed)
+	end
+
 	layout:AddInitializer(CreateSettingsListSectionHeaderInitializer("关于"))
 	do
 		local version = CreateFromMixins(SettingsListElementInitializer) -- copied from Settings.CreateElementInitializer

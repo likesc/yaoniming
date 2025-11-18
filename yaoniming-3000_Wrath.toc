@@ -1,5 +1,5 @@
-## Interface: 30403
-## Version: 0.2.5
+## Interface: 38000
+## Version: 0.2.7
 ## Title: yaoniming-3000
 ## Notes: item price/level, spell id, selljunk, fastloot, cheapest trash
 ## Author: likesc

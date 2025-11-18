@@ -5,8 +5,8 @@ local options
 local GetContainerItemInfo = C_Container.GetContainerItemInfo -- TODO
 local GetContainerNumSlots = C_Container.GetContainerNumSlots or GetContainerNumSlots
 local GetItemInfo = C_Item.GetItemInfo or GetItemInfo
--- item price/level
 
+-- item price/level
 local tip_price = {}
 -- BUGBUG : 会错误地重复一次 当商人对话框的"图纸"物品 显示了 "材料需求" 时
 function tip_price.routine(tooltip)
@@ -54,7 +54,6 @@ function tip_price.init(self)
 end
 
 -- spell id
-
 local tip_spell = {}
 function tip_spell.routine(tooltip, unit, index, filter)
 	if tooltip:IsForbidden() then
@@ -95,7 +94,6 @@ function tip_spell.init(self)
 end
 
 -- selljunk
-
 local selljunk = {}
 function selljunk.flush(sell)
 	if sell.price > 0 then
@@ -192,7 +190,6 @@ function selljunk.destory()
 end
 
 -- cheapest (Stolen from https://github.com/ketho-wow/FlashCheapestGrey)
-
 local cheapest = {}
 function cheapest.light(bag, slot)
 	local item
@@ -238,7 +235,6 @@ function cheapest.mark(key, state)
 end
 
 -- fastloot (Stolen from https://github.com/Xarano-GIT/Faster-Loot)
-
 local fastloot = {
 	epoch = 0.,
 	DELAY = 0.3,
@@ -255,7 +251,6 @@ function fastloot.run(self, checked)
 end
 
 -- health/mana status text
-
 local health = {}
 function health.init(self)
 	if not options.health or self.done then
@@ -291,7 +286,6 @@ function health.init(self)
 		UnitFrame_Update(target)
 	end
 end
-
 function health.destory(self)
 	if not self.done then
 		return
@@ -406,7 +400,6 @@ function threat.routine(number, event, ...)
 end
 
 -- AlternateManaBar
-
 local function create_manabar()
 	local ui = CreateFrame("StatusBar")
 	ui:SetStatusBarTexture("Interface/TargetingFrame/UI-StatusBar")
@@ -455,7 +448,6 @@ function icebarrier.init(self)
 	self:reset(self.ui)
 	self.done = true
 end
-
 function icebarrier.unplug(self)
 	if not self.done then
 		return
@@ -466,7 +458,6 @@ function icebarrier.unplug(self)
 	ui:SetScript("OnEvent", nil)
 	self.done = nil
 end
-
 function icebarrier.on_cast(ui, event, ...)
 	local _, _, id = ...
 	if id ~= 13033 then
@@ -477,14 +468,12 @@ function icebarrier.on_cast(ui, event, ...)
 	ui:SetScript("OnEvent", icebarrier.on_combatlog)
 	icebarrier:refresh(ui)
 end
-
 function icebarrier.reset(self, ui)
 	ui:Hide()
 	ui:UnregisterAllEvents()
 	ui:RegisterUnitEvent("UNIT_SPELLCAST_SUCCEEDED", "player")
 	ui:SetScript("OnEvent", icebarrier.on_cast)
 end
-
 function icebarrier.refresh(self, ui)
 	local max = 826 + floor(GetSpellBonusDamage(5) * 0.1) -- (spellid : 13033) = 826
 	self.max = max
@@ -493,7 +482,6 @@ function icebarrier.refresh(self, ui)
 	ui.text:SetText(max)
 	ui:Show()
 end
-
 function icebarrier.absorbed(self, ui, damage)
 	local cur = self.cur - damage
 	-- print(self.cur, damage, cur)
@@ -501,7 +489,6 @@ function icebarrier.absorbed(self, ui, damage)
 	ui:SetValue(cur / self.max)
 	ui.text:SetText(cur)
 end
-
 function icebarrier.on_combatlog(ui)
 	local info = {CombatLogGetCurrentEventInfo()}
 	local len = #info
@@ -520,7 +507,6 @@ function icebarrier.on_combatlog(ui)
 end
 
 -- simple druid manabar
-
 local druidbar = { unplug = icebarrier.unplug }
 function druidbar.init(self)
 	if not options.druidbar or self.done then
@@ -562,7 +548,6 @@ function druidbar.routine(ui, event, unit, kind)
 end
 
 -- global
-
 local frame = CreateFrame("Frame")
 
 local function PF(key) return NAME .. "-" .. key end
@@ -609,10 +594,10 @@ local function opt_changed(_, setting, value)
 end
 
 local function init(frame)
+	-- options
 	if not (Settings and Settings.RegisterVerticalLayoutCategory) then
 		return
 	end
-
 	local category, layout = Settings.RegisterVerticalLayoutCategory(GetAddOnMetadata(NAME, "Title"))
 	local booltype = type(true)
 	do -- item level
@@ -652,7 +637,6 @@ local function init(frame)
 		Settings.CreateDropdown(category, setting, get_options, tooltip)
 		Settings.SetOnValueChangedCallback(setting.variable, opt_changed)
 	end
-
 	do -- cheapest
 		local key = "cheapest"
 		local label = "高亮背包垃圾"
