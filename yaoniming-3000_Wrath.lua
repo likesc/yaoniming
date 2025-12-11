@@ -53,7 +53,7 @@ function tip_price.init(self)
 	ItemRefTooltip:HookScript("OnTooltipSetItem", self.routine)
 end
 
--- spell id
+-- spell id, STATE { 1 = none, 2 = aura only, 3 = extra spells }
 local tip_spell = {}
 function tip_spell.routine(tooltip, unit, index, filter)
 	if tooltip:IsForbidden() then
@@ -75,11 +75,20 @@ function tip_spell.routine(tooltip, unit, index, filter)
 		tooltip:Show() -- refresh
 	end
 end
+function tip_spell.unspell(self)
+	if not self.spell then
+		return
+	end
+	GameTooltip:SetScript("OnTooltipSetSpell", self.spell)
+	self.spell = nil
+end
 function tip_spell.init(self)
 	local state = options.spellid
 	if not state or state == 1 then
+		self:unspell()
 		return
 	end
+	-- aura only
 	local routine = self.routine
 	if not self.aura then
 		self.aura = true
@@ -87,8 +96,11 @@ function tip_spell.init(self)
 		hooksecurefunc(GameTooltip, "SetUnitBuff", routine) -- "HELPFUL"
 		hooksecurefunc(GameTooltip, "SetUnitDebuff", function(tooltip, unit, index) routine(tooltip, unit, index, "HARMFUL") end)
 	end
-	if not self.spell and state == 3 then
-		self.spell = true
+	-- extra spells
+	if state ~= 3 then
+		self:unspell()
+	elseif not self.spell then
+		self.spell = GameTooltip:GetScript("OnTooltipSetSpell")
 		GameTooltip:HookScript("OnTooltipSetSpell", routine)
 	end
 end
