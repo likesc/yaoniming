@@ -53,3 +53,20 @@
 ## 更新
 
 - 0.2.5 新增了 "目标头像仇恨" 用于 "经典60"
+
+
+## 其它
+
+一些常用设置, 设置后需要执行 `/reload`
+
+```
+装备自动比较: /run SetCVar("alwaysCompareItems", "1")
+
+敌方姓名板显示职业颜色: /console SET ShowClassColorInNameplate "1"
+
+友方姓名板显示职业颜色: /console SET ShowClassColorInFriendlyNameplate "1"
+
+消除乱码: /console SET profanityFilter "0"
+
+关闭某些特效: /console SET ffxglow "0"
+```

@@ -540,6 +540,13 @@ function druidbar.init(self)
 	self.done = true
 	self.routine(ui, "UNIT_DISPLAYPOWER", unit)
 	self.routine(ui, "UNIT_POWER_UPDATE", unit, "MANA")
+	-- Hide built-in druid manabar
+	local alt = PlayerFrameAlternateManaBar
+	if alt then
+		alt:SetScript("OnEvent", nil)
+		alt:UnregisterAllEvents()
+		alt:Hide()
+	end
 end
 function druidbar.routine(ui, event, unit, kind)
 	if event == "UNIT_POWER_UPDATE" then
